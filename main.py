@@ -31,6 +31,9 @@ def product(v1, v2):
         v.append(v1[i] * v2[i])
     return v
 
+def vector_lenght(v):
+    return math.sqrt(v[0] ** 2 + v[1] ** 2)
+
 
 class Mesh:
     def __init__(self, vertex_table) -> None:
@@ -74,10 +77,13 @@ class Brick:
     def calculate_ball_collision_point(self, ball: Ball):
         vertex_table = self.static_mesh.vertex_table
 
-        for edge_index in range(len(self.static_mesh.vertex_table) - 1):
+        ball_collisions_points_list = []
+        distances_to_ball = []
+
+        for edge_index in range(len(self.static_mesh.vertex_table)):
             # assign 2 working vertexes, assuming that 2 vertexes next to each other in vertex table are connected with edge that is linear function
-            vertex1 = sum(vertex_table[edge_index], self.pos) # P1
-            vertex2 = sum(vertex_table[edge_index + 1], self.pos) # P2
+            vertex1 = sum(vertex_table[edge_index - 1], self.pos) # P1
+            vertex2 = sum(vertex_table[edge_index], self.pos) # P2
 
             d_vertex_x = vertex2[0] - vertex1[0]
             d_vertex_y = vertex2[1] - vertex1[1]
@@ -91,9 +97,19 @@ class Brick:
             x_distance_to_collision_point = math.sin(-slope_angle) * distance
             y_distance_to_collision_point = math.cos(-slope_angle) * distance
 
-            # set values
-            self.ball_collision_point = sum(ball.pos, [x_distance_to_collision_point, y_distance_to_collision_point])
-            self.distance_to_ball = abs(distance)
+            # set values for every edge
+            ball_collisions_points_list.append(sum(ball.pos, [x_distance_to_collision_point, y_distance_to_collision_point]))
+            distances_to_ball.append(abs(distance))
+        
+        # find the smallest edge distance and use the values
+        smallest_distance = min(distances_to_ball)
+        smallest_distance_index = distances_to_ball.index(smallest_distance)
+
+        self.distance_to_ball = smallest_distance
+        self.ball_collision_point = ball_collisions_points_list[smallest_distance_index] 
+
+
+        
 
     def handle_collision(self, ball: Ball):
         self.calculate_ball_collision_point(ball)
@@ -117,16 +133,24 @@ class Brick:
 
 line = Mesh([
     [-200, 200],
-    [100, 0],
+    [100, -200],
     ])
 
-ball = Ball([300, 500], [0, -0.0], 50, [255, 0, 255], win)
+walls_mesh = Mesh([
+    [1, height - 1],
+    [width - 1, height - 1],
+    [width - 1, 1],
+    [1, 1]
+])
+
+ball = Ball([10, 300], [3, 0.0], 10, [0, 0, 255], win)
 brick = Brick([width / 2, height / 2], line, True, "yellow", win)
+walls = Brick([0, 0], walls_mesh, True, "white", win)
 
 run = True
 FPS = 60
 
-acceleration = 0.1
+acceleration = 1
 friction = 0.01
 font = pygame.font.Font(None, 25)
 
@@ -145,18 +169,33 @@ while run:
         keys = pygame.key.get_pressed()
 
         if keys[pygame.K_w]:
-            ball.vel = sum(ball.vel, [0, acceleration])
+            ball.vel[1] += acceleration
 
         if keys[pygame.K_a]:
-            ball.vel = sum(ball.vel, [-acceleration, 0])
+            ball.vel[0] += -acceleration
 
         if keys[pygame.K_s]:
-            ball.vel = sum(ball.vel, [0, -acceleration])
+            ball.vel[1] += -acceleration
 
         if keys[pygame.K_d]:
-            ball.vel = sum(ball.vel, [acceleration, 0])
+            ball.vel[0] += acceleration
 
-    ball.vel = sum(ball.vel, product(ball.vel, [-friction, -friction]))
+        # if not (keys[pygame.K_w] or keys[pygame.K_a] or keys[pygame.K_s] or keys[pygame.K_d]):
+        #     ball.vel = sum(ball.vel, product(ball.vel, [-friction, -friction]))
+
+        # if keys[pygame.K_w]:
+        #     ball.vel = sum(ball.vel, [0, acceleration])
+
+        # if keys[pygame.K_a]:
+        #     ball.vel = sum(ball.vel, [-acceleration, 0])
+
+        # if keys[pygame.K_s]:
+        #     ball.vel = sum(ball.vel, [0, -acceleration])
+
+        # if keys[pygame.K_d]:
+        #     ball.vel = sum(ball.vel, [acceleration, 0])
+
+    # ball.vel = sum(ball.vel, product(ball.vel, [-friction, -friction]))
 
         
             
@@ -166,6 +205,8 @@ while run:
     
     ball.draw()
     brick.draw()
+    walls.draw()
+    walls.handle_collision(ball)
     brick.calculate_ball_collision_point(ball)
     brick.handle_collision(ball)
 
@@ -181,8 +222,11 @@ while run:
 
 
     # testing
+    pygame.draw.line(win, "green", reverseY(ball.pos), reverseY(walls.ball_collision_point))
+    pygame.draw.circle(win, "white", reverseY(walls.ball_collision_point), 2)
+
     pygame.draw.line(win, "green", reverseY(ball.pos), reverseY(brick.ball_collision_point))
-    pygame.draw.circle(win, "red", reverseY(brick.ball_collision_point), 5)
+    pygame.draw.circle(win, "white", reverseY(brick.ball_collision_point), 2)
 
 
     y += 1.5
