@@ -114,16 +114,22 @@ class Brick:
     def handle_collision(self, ball: Ball):
         self.calculate_ball_collision_point(ball)
         velocity = ball.vel
-        
+
         # check if colliding
         if self.distance_to_ball <= ball.size:
             # rotate velocity vector by slope angle of function at collision point
             # mirror y axis by multiplying y value by -1
-            bounce_velocity = [
-                velocity[0] * math.cos(-self.slope_angle) - velocity[1] * math.sin(-self.slope_angle),
-                -(velocity[0] * math.sin(-self.slope_angle) + velocity[1] * math.sin(-self.slope_angle)),
-            ]
-            ball.vel = bounce_velocity
+            #
+            normal_vector_angle = self.slope_angle + math.pi / 2
+            normal_vector = [math.cos(normal_vector_angle), math.sin(normal_vector_angle)]
+
+            dot = velocity[0] * normal_vector[0] + velocity[1] * normal_vector[1]
+            
+            #R=V−2N(V⋅N)
+            bounce_vector = sum(
+                velocity, [-dot * normal_vector[0] * 2, -dot * normal_vector[1] * 2])
+
+            ball.vel = bounce_vector
 
 
 
@@ -133,7 +139,7 @@ class Brick:
 
 line = Mesh([
     [-200, 200],
-    [100, -200],
+    [200, -200],
     ])
 
 walls_mesh = Mesh([
@@ -143,7 +149,7 @@ walls_mesh = Mesh([
     [1, 1]
 ])
 
-ball = Ball([10, 300], [3, 0.0], 10, [0, 0, 255], win)
+ball = Ball([30, 300], [2, 2.0], 10, [0, 0, 255], win)
 brick = Brick([width / 2, height / 2], line, True, "yellow", win)
 walls = Brick([0, 0], walls_mesh, True, "white", win)
 
