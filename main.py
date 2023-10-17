@@ -40,7 +40,6 @@ class Mesh:
         self.vertex_table = vertex_table
 
 
-
 class Ball:
     def __init__(self, pos, vel, size, color, win): 
         self.pos = pos
@@ -119,12 +118,12 @@ class Brick:
         if self.distance_to_ball <= ball.size:
             # rotate velocity vector by slope angle of function at collision point
             # mirror y axis by multiplying y value by -1
-            #
+
             normal_vector_angle = self.slope_angle + math.pi / 2
             normal_vector = [math.cos(normal_vector_angle), math.sin(normal_vector_angle)]
 
             dot = velocity[0] * normal_vector[0] + velocity[1] * normal_vector[1]
-            
+
             #R=V−2N(V⋅N)
             bounce_vector = sum(
                 velocity, [-dot * normal_vector[0] * 2, -dot * normal_vector[1] * 2])
@@ -132,15 +131,44 @@ class Brick:
             ball.vel = bounce_vector
 
 
+    def draw_normal_vector(self, lenght, win):
+        vertex_table = self.static_mesh.vertex_table
+
+        for edge_index in range(len(self.static_mesh.vertex_table)):
+
+            vertex1 = sum(vertex_table[edge_index - 1], self.pos) # P1
+            vertex2 = sum(vertex_table[edge_index], self.pos) # P2
+
+            normal_angle = self.slope_angle + (math.pi / 2)
+
+            normal_vector = [math.cos(normal_angle) * lenght, math.sin(normal_angle) * lenght]
+            origin = [
+                (vertex1[0] + vertex2[0]) / 2,
+                (vertex1[1] + vertex2[1]) / 2,
+            ]
+
+            normal_vector_left = sum(normal_vector, origin)
+            normal_vector_right = sum([-normal_vector[0], -normal_vector[1]], origin)
+
+            pygame.draw.line(win, "white", reverseY(origin), reverseY(normal_vector_left))
+            pygame.draw.line(win, "white", reverseY(origin), reverseY(normal_vector_right))
+
 
 
 
 
 
 line = Mesh([
-    [-200, 200],
-    [200, -200],
+    [0, 200],
+    [0, -200],
     ])
+
+square = Mesh([
+    [-100, 100],
+    [100, 100],
+    [100, -100],
+    [-100, -100],
+])
 
 walls_mesh = Mesh([
     [1, height - 1],
@@ -149,7 +177,9 @@ walls_mesh = Mesh([
     [1, 1]
 ])
 
-ball = Ball([30, 300], [2, 2.0], 10, [0, 0, 255], win)
+lol = Brick([100, 300], square, True, "orange", win)
+
+ball = Ball([30, 300], [1, 2.0], 10, [0, 0, 255], win)
 brick = Brick([width / 2, height / 2], line, True, "yellow", win)
 walls = Brick([0, 0], walls_mesh, True, "white", win)
 
@@ -210,11 +240,18 @@ while run:
     win.fill((0, 0, 0)) 
     
     ball.draw()
+
     brick.draw()
+    brick.handle_collision(ball)
+    brick.draw_normal_vector(30, win)
+
     walls.draw()
     walls.handle_collision(ball)
-    brick.calculate_ball_collision_point(ball)
-    brick.handle_collision(ball)
+    walls.draw_normal_vector(30, win)
+
+    lol.draw()
+    lol.handle_collision(ball)
+    lol.draw_normal_vector(30, win)
 
     # draw fps counter
     end_time = pygame.time.get_ticks()  # Get the end time of the frame
