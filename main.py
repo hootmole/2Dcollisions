@@ -142,11 +142,11 @@ class Brick:
                 
                 if vertex1_dist < vertex2_dist:
                     distance = vertex1_dist
-                    collision_points_pos_list.append(vertex1)
+                    collision_points_pos_list.append(vertex2)
 
                 else:
                     distance = vertex2_dist
-                    collision_points_pos_list.append(vertex2)
+                    collision_points_pos_list.append(vertex1)
 
                 
                 distances_to_ball.append(distance)
