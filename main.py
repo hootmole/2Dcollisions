@@ -31,8 +31,23 @@ def product(v1, v2):
         v.append(v1[i] * v2[i])
     return v
 
-def vector_lenght(v):
+def difference(v1, v2):
+    v = []
+    for i in range(len(v1)):
+        v.append(v1[i] - v2[i])
+    return v
+
+def vector_lenght2D(v):
     return math.sqrt(v[0] ** 2 + v[1] ** 2)
+
+def vector_distance2D(v1, v2):
+    return vector_lenght2D(sum(v1, v2))
+
+def rotate_vec2D(v, angle):
+    return [
+        v[0] * math.cos(angle) - v[1] * math.sin(angle),
+        v[0] * math.sin(angle) + v[1] * math.cos(angle),
+    ]
 
 
 class Mesh:
@@ -75,7 +90,7 @@ class Brick:
     def handle_collision(self, ball: Ball):
         vertex_table = self.static_mesh.vertex_table
 
-        ball_collisions_points_list = []
+        collision_points_pos_list = []
         distances_to_ball = []
         self.slope_angles = []
 
@@ -96,26 +111,62 @@ class Brick:
             #     slope_angle = math.atan2(d_vertex_y, d_vertex_x)
 
             slope_angle = math.atan2(d_vertex_y, d_vertex_x)
-
             self.slope_angles.append(slope_angle)
 
-            distance = math.cos(slope_angle) * (vertex1[1] - ball.pos[1]) - math.sin(slope_angle) * (vertex1[0] - ball.pos[0])
+            # determine if edge imact or vertex impact
+            # assuming vertex1 is the origin of rotation
+            rotated_vertex2 = sum(rotate_vec2D([d_vertex_x, d_vertex_y], -slope_angle), vertex1) # [d_vertex_x, d_vertex_y] is the same as vertex2 - vertex1 (vector - origin)
+            rotated_ball_pos = sum(rotate_vec2D(difference(ball.pos, vertex1), -slope_angle), vertex1)
 
-            x_distance_to_collision_point = math.sin(-slope_angle) * distance
-            y_distance_to_collision_point = math.cos(-slope_angle) * distance
+            is_edge_impact = rotated_ball_pos >= min(vertex1, rotated_vertex2) and rotated_ball_pos <= max(vertex1, rotated_vertex2)
+            if is_edge_impact:
+                self.color = (0, 255, 0)
+            else:
+                self.color = (255, 0, 0)
 
-            # set values for every edge
-            ball_collisions_points_list.append(sum(ball.pos, [x_distance_to_collision_point, y_distance_to_collision_point]))
-            distances_to_ball.append(abs(distance))
+
+            # edge impact
+            if is_edge_impact:
+                distance = math.cos(slope_angle) * (vertex1[1] - ball.pos[1]) - math.sin(slope_angle) * (vertex1[0] - ball.pos[0])
+
+                x_distance_to_collision_point = math.sin(-slope_angle) * distance
+                y_distance_to_collision_point = math.cos(-slope_angle) * distance
+
+                # set values for every edge
+                collision_points_pos_list.append(sum(ball.pos, [x_distance_to_collision_point, y_distance_to_collision_point]))
+                distances_to_ball.append(abs(distance))
+            
+            else:
+                vertex1_dist = vector_distance2D(ball.pos, vertex1)
+                vertex2_dist = vector_distance2D(ball.pos, vertex2)
+                
+                if vertex1_dist < vertex2_dist:
+                    distance = vertex1_dist
+                    collision_points_pos_list.append(vertex1)
+
+                else:
+                    distance = vertex2_dist
+                    collision_points_pos_list.append(vertex2)
+
+                
+                distances_to_ball.append(distance)
+
+
+
+
         
+
         # find the smallest edge distance and use the values
         distance_to_ball = min(distances_to_ball)
-        working_edge = distances_to_ball.index(distance_to_ball) # edge that is colliding with ball
+        working_edge_index = distances_to_ball.index(distance_to_ball) # edge that is colliding with ball
         
-        working_slope_angle = self.slope_angles[working_edge]
-        self.ball_collision_point = ball_collisions_points_list[working_edge] 
+        working_slope_angle = self.slope_angles[working_edge_index]
+        self.ball_collision_point = collision_points_pos_list[working_edge_index] 
 
 
+        # vertex impact
+
+        # edge impact
         # collision handeling part
         velocity = ball.vel
         
