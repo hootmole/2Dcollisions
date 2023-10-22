@@ -41,7 +41,7 @@ def vector_lenght2D(v):
     return math.sqrt(v[0] ** 2 + v[1] ** 2)
 
 def vector_distance2D(v1, v2):
-    return vector_lenght2D(sum(v1, v2))
+    return vector_lenght2D(difference(v1, v2))
 
 def rotate_vec2D(v, angle):
     return [
@@ -70,15 +70,16 @@ class Ball:
 
 
 class Brick:
-    def __init__(self, pos, static_mesh: Mesh, isAlive: bool, color, win) -> None:
+    def __init__(self, pos, static_mesh: Mesh, isAlive: bool, color, win, is_enabled_testing = False) -> None:
         self.pos = pos
         self.isAlive = isAlive
         self.color = color
         self.win = win
         self.static_mesh = static_mesh
         self.distance_to_ball = None
-        self.ball_collision_point = None
+        self.collision_point_pos = None
         self.slope_angles = []
+        self.is_enabled_testing = is_enabled_testing
 
     def draw(self):
         if self.isAlive:
@@ -118,6 +119,8 @@ class Brick:
             rotated_vertex2 = sum(rotate_vec2D([d_vertex_x, d_vertex_y], -slope_angle), vertex1) # [d_vertex_x, d_vertex_y] is the same as vertex2 - vertex1 (vector - origin)
             rotated_ball_pos = sum(rotate_vec2D(difference(ball.pos, vertex1), -slope_angle), vertex1)
 
+            
+
             is_edge_impact = rotated_ball_pos >= min(vertex1, rotated_vertex2) and rotated_ball_pos <= max(vertex1, rotated_vertex2)
             if is_edge_impact:
                 self.color = (0, 255, 0)
@@ -137,22 +140,20 @@ class Brick:
                 distances_to_ball.append(abs(distance))
             
             else:
+                # vertex impact
                 vertex1_dist = vector_distance2D(ball.pos, vertex1)
                 vertex2_dist = vector_distance2D(ball.pos, vertex2)
                 
                 if vertex1_dist < vertex2_dist:
                     distance = vertex1_dist
-                    collision_points_pos_list.append(vertex2)
+                    collision_points_pos_list.append(vertex1)
 
                 else:
                     distance = vertex2_dist
-                    collision_points_pos_list.append(vertex1)
+                    collision_points_pos_list.append(vertex2)
 
                 
                 distances_to_ball.append(distance)
-
-
-
 
         
 
@@ -161,7 +162,7 @@ class Brick:
         working_edge_index = distances_to_ball.index(distance_to_ball) # edge that is colliding with ball
         
         working_slope_angle = self.slope_angles[working_edge_index]
-        self.ball_collision_point = collision_points_pos_list[working_edge_index] 
+        self.collision_point_pos = collision_points_pos_list[working_edge_index] 
 
 
         # vertex impact
@@ -170,8 +171,8 @@ class Brick:
         # collision handeling part
         velocity = ball.vel
         
-        if distance_to_ball <= ball.size: 
-            # check if colliding
+        if distance_to_ball <= ball.size and is_edge_impact: 
+            # edge imact
             normal_vector_angle = working_slope_angle + math.pi / 2
             normal_vector = [math.cos(normal_vector_angle), math.sin(normal_vector_angle)]
 
@@ -182,6 +183,24 @@ class Brick:
                 velocity, [-dot * normal_vector[0] * 2, -dot * normal_vector[1] * 2])
 
             ball.vel = bounce_vector
+
+        elif distance_to_ball <= ball.size and not is_edge_impact:
+            # vertex imact
+            d_ball_pos_vec_pos = difference(self.collision_point_pos, ball.pos)
+
+            normal_vector_angle = math.atan2(d_ball_pos_vec_pos[1], d_ball_pos_vec_pos[0]) + math.pi
+            normal_vector = [math.cos(normal_vector_angle), math.sin(normal_vector_angle)]
+
+            dot = velocity[0] * normal_vector[0] + velocity[1] * normal_vector[1]
+
+            #R=V−2N(V⋅N)
+            bounce_vector = sum(
+                velocity, [-dot * normal_vector[0] * 2, -dot * normal_vector[1] * 2])
+
+            ball.vel = bounce_vector
+
+
+
 
 
     def draw_normal_vector(self, lenght, win):
@@ -211,8 +230,8 @@ class Brick:
 
 
 line = Mesh([
-    [-100, 200],
-    [177, -200],
+    [-100, 0],
+    [100, 0],
     ])
 
 square = Mesh([
@@ -230,8 +249,8 @@ walls_mesh = Mesh([
 ])
 
 
-ball = Ball([30, 300], [1, 2.0], 10, [0, 0, 255], win)
-brick = Brick([width / 2, height / 2], line, True, "yellow", win)
+ball = Ball([70, 300], [1, 0.3], 50, [0, 0, 255], win)
+brick = Brick([width / 2, height / 2], line, True, "yellow", win, 1)
 walls = Brick([0, 0], walls_mesh, True, "white", win)
 
 run = True
@@ -313,11 +332,11 @@ while run:
 
 
     # testing
-    pygame.draw.line(win, "green", reverseY(ball.pos), reverseY(walls.ball_collision_point))
-    pygame.draw.circle(win, "white", reverseY(walls.ball_collision_point), 2)
+    pygame.draw.line(win, "green", reverseY(ball.pos), reverseY(walls.collision_point_pos))
+    pygame.draw.circle(win, "white", reverseY(walls.collision_point_pos), 2)
 
-    pygame.draw.line(win, "green", reverseY(ball.pos), reverseY(brick.ball_collision_point))
-    pygame.draw.circle(win, "white", reverseY(brick.ball_collision_point), 2)
+    pygame.draw.line(win, "green", reverseY(ball.pos), reverseY(brick.collision_point_pos))
+    pygame.draw.circle(win, "white", reverseY(brick.collision_point_pos), 2)
 
 
     y += 1.5
